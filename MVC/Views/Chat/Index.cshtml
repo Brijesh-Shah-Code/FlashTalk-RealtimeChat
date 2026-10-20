@@ -1,0 +1,227 @@
+﻿@model List<Repositories.Models.t_User>
+@{
+    ViewData["Title"] = "FlashTalk Chat";
+    var currentUsername = Context.Session.GetString("username");
+}
+
+<style>
+    /* Premium UI Styling */
+    :root {
+        --primary-accent: #6366f1;
+        --bg-soft: #f8fafc;
+        --border-color: #e2e8f0;
+    }
+
+    .chat-container {
+        height: 75vh;
+        background: #fff;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+        border-radius: 1.25rem;
+        overflow: hidden;
+        display: flex;
+    }
+
+    /* Sidebar Styles */
+    .chat-sidebar {
+        width: 320px;
+        background: var(--bg-soft);
+        border-right: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        background: white;
+    }
+
+    /* Main Chat Area */
+    .chat-main {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        background: white;
+    }
+
+    #chatWindow {
+        flex-grow: 1;
+        padding: 2rem;
+        overflow-y: auto;
+        background-image: radial-gradient(#e2e8f0 0.5px, transparent 0.5px);
+        background-size: 20px 20px;
+        /* Subtle grid pattern */
+    }
+
+    /* Message Bubbles */
+    .bubble {
+        max-width: 70%;
+        padding: 0.75rem 1.25rem;
+        border-radius: 1.25rem;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        position: relative;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+
+    .bubble-sent {
+        background: var(--primary-accent);
+        color: white;
+        border-bottom-right-radius: 0.25rem;
+    }
+
+    .bubble-received {
+        background: #f1f5f9;
+        color: #1e293b;
+        border-bottom-left-radius: 0.25rem;
+        border: 1px solid var(--border-color);
+    }
+
+    /* Kendo Dropdown Customization */
+    .k-dropdown {
+        border-radius: 0.75rem !important;
+    }
+</style>
+
+<div class="container py-5">
+    <div class="chat-container">
+        <div class="chat-sidebar p-0">
+            <div class="chat-header">
+                <h5 class="fw-bold mb-1 text-dark">Conversations</h5>
+                <p class="small text-muted mb-3">Logged in as <b>@currentUsername</b></p>
+
+                <label class="small text-uppercase fw-bold text-muted mb-2 d-block" style="letter-spacing: 1px;">Start
+                    New Chat</label>
+                <input id="friendsDropdown" style="width: 100%;" />
+            </div>
+            <div class="p-4 text-center mt-auto mb-auto d-none d-md-block">
+                <i class="k-icon k-i-comment text-muted" style="font-size: 48px; opacity: 0.3;"></i>
+                <p class="small text-muted mt-2">Pick a user to begin</p>
+            </div>
+        </div>
+
+        <div class="chat-main">
+            <div class="p-3 border-bottom d-flex align-items-center bg-white shadow-sm">
+                <div class="ms-2">
+                    <h6 class="mb-0 fw-bold" id="activeChatName">No Chat Selected</h6>
+                    <div class="small text-success" id="activeStatus" style="display:none;">
+                        <span class="badge badge-dot bg-success me-1"></span> Active Now
+                    </div>
+                </div>
+            </div>
+
+            <div id="chatWindow">
+                <div class="text-center mt-5">
+                    <img src="https://cdn-icons-png.flaticon.com/512/3649/3649423.png"
+                        style="width: 120px; opacity: 0.1;" />
+                    <p class="text-muted mt-3">Queued. Delivered. Done.</p>
+                </div>
+            </div>
+
+            <div class="p-4 bg-white border-top">
+                <div class="input-group bg-light rounded-pill p-1 shadow-sm">
+                    <input id="messageInput" type="text" class="form-control border-0 bg-transparent ps-4 py-2"
+                        placeholder="Type a message..." disabled />
+                    <button id="sendBtn"
+                        class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center ms-2"
+                        style="width: 45px; height: 45px;" disabled>
+
+                        <i class="bi bi-send-fill"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            const currentUsername = "@currentUsername";
+            let selectedFriendEmail = "";
+            let selectedFriendName = "";
+
+            // Initialize Kendo DropDownList
+            $("#friendsDropdown").kendoDropDownList({
+                dataTextField: "c_UserName",
+                dataValueField: "c_Email",
+                dataSource: @Html.Raw(Json.Serialize(Model)),
+                optionLabel: "Search users...",
+                filter: "contains", // Searchable for premium feel
+                change: function (e) {
+                    selectedFriendEmail = this.value();
+                    selectedFriendName = this.text();
+
+                    if (selectedFriendEmail) {
+                        $("#messageInput, #sendBtn").prop("disabled", false);
+                        $("#activeChatName").text(selectedFriendName);
+                        $("#activeStatus").fadeIn();
+                        $("#chatWindow").html(`<div class='text-center my-4'><span class='badge bg-light text-muted fw-normal px-3'>Conversation started with ${selectedFriendName}</span></div>`);
+                    } else {
+                        $("#messageInput, #sendBtn").prop("disabled", true);
+                        $("#activeChatName").text("No Chat Selected");
+                        $("#activeStatus").hide();
+                    }
+                }
+            });
+
+            // Send Message
+            $("#sendBtn").click(function () {
+                const msg = $("#messageInput").val();
+                if (!msg) return;
+
+                // const payload = `${currentUsername}|${msg}`;
+                const payload = `${currentUsername}|${selectedFriendEmail}|${msg}`;
+
+                $.post('/Chat/Send', { toEmail: selectedFriendEmail, message: payload }, function () {
+                    appendMessage(currentUsername, msg, 'sent');
+                    $("#messageInput").val('');
+                });
+            });
+
+            // Enter key to send
+            $("#messageInput").keypress(function (e) {
+                if (e.which == 13) $("#sendBtn").click();
+            });
+
+            // Receive Messages (Polling)
+            setInterval(function () {
+                $.get('/Chat/Receive', function (res) {
+                    if (res.hasMessage) {
+                        const parts = res.content.split('|');
+
+                        const senderName = parts[0];
+                        const receiverEmail = parts[1];
+                        const messageBody = parts[2];
+
+                        // Show message ONLY if it belongs to current chat
+                        if (
+                            (senderName === selectedFriendName) ||
+                            (senderName === currentUsername && receiverEmail === selectedFriendEmail)
+                        ) {
+                            appendMessage(senderName, messageBody, 'received');
+                        }
+                    }
+                });
+            }, 2000);
+
+            function appendMessage(user, text, type) {
+                const isSent = type === 'sent';
+                const alignment = isSent ? 'align-items-end' : 'align-items-start';
+                const bubbleClass = isSent ? 'bubble-sent' : 'bubble-received';
+
+                const html = `
+                            <div class="d-flex flex-column ${alignment} mb-4">
+                                <div class="small text-muted mb-1 px-2" style="font-size: 0.75rem;">${user}</div>
+                                <div class="bubble ${bubbleClass}">
+                                    ${text}
+                                </div>
+                            </div>`;
+
+                $("#chatWindow").append(html);
+                $("#chatWindow").animate({ scrollTop: $("#chatWindow")[0].scrollHeight }, 300);
+            }
+        });
+    </script>
+}

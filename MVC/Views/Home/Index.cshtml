@@ -1,0 +1,44 @@
+﻿@{
+    ViewData["Title"] = "Welcome";
+}
+
+<style>
+    .hero-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        border-radius: 20px;
+        color: white;
+    }
+    .glass-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 3rem;
+        border-radius: 20px;
+    }
+</style>
+
+<div class="hero-gradient">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6 mb-5 mb-lg-0">
+                <div class="glass-card shadow-lg ms-5">
+                    <h1 class="display-3 fw-bold mb-4">FlashTalk</h1>
+                    <p class="lead mb-4">Where Messages Move at the Speed of Light. <br>
+                    Instant Connections, Zero Wait.</p>
+                    <div class="d-flex gap-3">
+                        <a href="@Url.Action("Login", "User")" class="btn btn-outline-light btn-lg px-4">Get Started</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 text-center">
+                <div class="p-4">
+                    @* <i class="k-icon k-i-comment k-color-white" style="font-size: 150px;"></i> *@
+                    <img src="https://marketplace.canva.com/fregY/MAHBBpfregY/1/tl/canva-live-chat-icon.-chat-icon.-3d-illustration.-MAHBBpfregY.png" alt="Logo" height="390px">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

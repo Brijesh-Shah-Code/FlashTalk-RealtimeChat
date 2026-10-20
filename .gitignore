@@ -1,0 +1,21 @@
+# Build artifacts
+bin/
+obj/
+*.user
+*.suo
+*.vs/
+*.bak
+*.log
+
+# User-specific files
+.vs/
+*.sln
+
+# Environment
+.env
+appsettings.Development.json
+
+# IDE
+.idea/
+.vscode/
+*.swp

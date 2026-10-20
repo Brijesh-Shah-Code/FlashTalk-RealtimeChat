@@ -1,0 +1,213 @@
+﻿@{
+    ViewData["Title"] = "Group Chat";
+    var currentUser = Context.Session.GetString("username") ?? "Guest";
+}
+
+<style>
+    .chat-container {
+        max-width: 900px;
+        margin: 20px auto;
+        background: #fff;
+        border-radius: 15px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        height: 80vh;
+    }
+
+    .chat-header {
+        background: #221073;
+        color: white;
+        padding: 15px 25px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    #chatWindow {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        background-color: #f8f9fa;
+        background-image: radial-gradient(#dee2e6 1px, transparent 1px);
+        background-size: 20px 20px;
+    }
+
+    .message-bubble {
+        margin-bottom: 15px;
+        max-width: 75%;
+        padding: 10px 15px;
+        border-radius: 18px;
+        position: relative;
+        font-size: 0.95rem;
+        line-height: 1.4;
+    }
+
+    .message-sent {
+        background: #0d6efd;
+        color: white;
+        margin-left: auto;
+        border-bottom-right-radius: 4px;
+    }
+
+    .message-received {
+        background: white;
+        color: #212529;
+        margin-right: auto;
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    .sender-name {
+        font-size: 0.75rem;
+        font-weight: bold;
+        margin-bottom: 2px;
+        display: block;
+        opacity: 0.8;
+    }
+
+    .chat-footer {
+        padding: 20px;
+        background: white;
+        border-top: 1px solid #eee;
+    }
+
+    #groupSelect {
+        border-radius: 20px;
+        padding-left: 15px;
+        border: 2px solid #e9ecef;
+    }
+
+    .input-area {
+        background: #f8f9fa;
+        border-radius: 30px;
+        padding: 5px 15px;
+        border: 1px solid #dee2e6;
+    }
+
+    #messageInput {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+    }
+</style>
+
+<div class="container">
+    <div class="chat-container">
+        <div class="chat-header">
+            <div>
+                <h5 class="mb-0"><i class="bi bi-chat-dots-fill me-2"></i>Group Broadcast</h5>
+                <small class="opacity-75">Logged in as: <strong>@currentUser</strong></small>
+            </div>
+            <div style="width: 200px;">
+                <select id="groupSelect" class="form-select form-select-sm">
+                    <option value="">Choose a Group...</option>
+                    <option value="general">🌐 General</option>
+                    <option value="developers">💻 Developers</option>
+                    <option value="project">🚀 Project Team</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="chatWindow">
+            <div class="text-center mt-5 text-muted">
+                <i class="bi bi-info-circle"></i><br>
+                Please select a group to start chatting
+            </div>
+        </div>
+
+        <div class="chat-footer">
+            <div class="input-group input-area">
+                <input id="messageInput" class="form-control" placeholder="Type your message here..." disabled />
+                <button id="sendBtn" class="btn btn-primary rounded-circle ms-2" style="width: 45px; height: 45px;"
+                    disabled>
+                    <i class="bi bi-send-fill"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let currentUser = "@currentUser";
+        let selectedGroup = "";
+        let lastMessage = "";
+
+        /* Select Group Logic */
+        $("#groupSelect").change(function () {
+
+            selectedGroup = $(this).val();
+
+            if (!selectedGroup) return;
+
+            $("#chatWindow").html("");
+
+            /* JOIN GROUP → CREATE QUEUE */
+
+            $.post("/Group/Join",
+                {
+                    groupName: selectedGroup
+                },
+                function () {
+                    console.log("Joined group:", selectedGroup);
+                });
+
+            $("#messageInput").prop("disabled", false).focus();
+            $("#sendBtn").prop("disabled", false);
+
+        });
+
+        /* Send Message Logic */
+        $("#sendBtn").click(function () {
+            let msg = $("#messageInput").val().trim();
+            if (!msg || !selectedGroup) return;
+
+            $.post("/Group/Send", { groupName: selectedGroup, message: msg }, function () {
+                appendMessage(currentUser, msg, "sent");
+                $("#messageInput").val("");
+            });
+        });
+
+        $("#messageInput").keypress(function (e) {
+            if (e.which == 13) $("#sendBtn").click();
+        });
+
+        /* Polling for Messages */
+        setInterval(function () {
+            if (!selectedGroup) return;
+
+            $.get("/Group/Receive", { groupName: selectedGroup }, function (res) {
+                if (res.hasMessage) {
+                    if (res.content === lastMessage) return;
+                    lastMessage = res.content;
+
+                    const parts = res.content.split(':');
+                    const sender = parts[0];
+                    const text = parts.slice(1).join(':');
+
+                    if (sender !== currentUser)
+                        appendMessage(sender, text, "received");
+                }
+            });
+        }, 2000);
+
+
+        function appendMessage(user, text, type) {
+            const isSent = type === "sent";
+            const bubbleClass = isSent ? "message-sent" : "message-received";
+
+            let html = `
+                    <div class="d-flex w-100">
+                        <div class="message-bubble ${bubbleClass}">
+                            <span class="sender-name">${isSent ? "You" : user}</span>
+                            ${text}
+                        </div>
+                    </div>`;
+
+            $("#chatWindow").append(html);
+            $("#chatWindow").animate({ scrollTop: $("#chatWindow")[0].scrollHeight }, 300);
+        }
+    </script>
+}
